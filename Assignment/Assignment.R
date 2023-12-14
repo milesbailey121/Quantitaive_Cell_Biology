@@ -1,6 +1,6 @@
 
-
 package_needed <- c("tidyverse", "factoextra", "ggpubr","edgeR","DESeq2")
+install.packages(package_needed)
 for (pkg in package_needed) {
   if(!require(pkg, character.only = T)) library(pkg, character.only = T)
 } 
@@ -84,6 +84,8 @@ long_transormation(lcpm.filtered, "LogCPM") %>% ggplot() + geom_density(aes(LogC
   theme(plot.title = element_text(hjust = 0.5))
 
 plotMeanVar(dgelist.filtered)#views the mean varaince at the gene-level 
+
+plotMeanVar(dgelist.filtered.norm)
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~Normalisation~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -285,7 +287,6 @@ filtered_DEList <- filtered_DEList[DE$table$FDR < 0.05,]
 edgeR_top <- slice_head(filtered_DEList[order(filtered_DEList$logFC, decreasing = TRUE),], n = 20)
 view(slice_head(filtered_DEList[order(filtered_DEList$logFC, decreasing = TRUE),], n = 50)$Gene)
 view(slice_head(filtered_DEList[order(filtered_DEList$logFC, decreasing = FALSE),], n = 50)$Gene)
-edgeR_top
 edgeR_top[order(edgeR_top$PValue, decreasing = FALSE),]
 #----------------------------------------------------------------------------------------------------------------
 
@@ -324,11 +325,12 @@ joined_genes<- c(up_regulated$Gene, down_regulated$Gene) # Joins the most up and
 z.score.scaled.genes<-t(cpm.filtered.norm) %>% scale() %>% t() # Creates a z.score martix of the top 15 up and down regulated genes with patients and tissue
 head(z.score.scaled.genes)
 
+#Heatmap of Z-scores
 Heatmap(matrix=z.score.scaled.genes[joined_genes,], 
         cluster_rows=TRUE, cluster_columns = TRUE, 
         show_row_names = TRUE,show_row_dend = TRUE,
         show_column_dend = TRUE,column_dend_side  = "top", 
         name = "Z-score", column_title = "Top 15 Postively and Negatively Differnetially Expressed Genes in CNS condition",
-        row_split = 2, row_title = c("Down", "Up"))
+        row_split = 2, row_title = c("Up", "Down"))
 
 
