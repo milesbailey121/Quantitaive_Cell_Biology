@@ -1,5 +1,7 @@
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
 
-package_needed <- c("tidyverse", "factoextra", "ggpubr","edgeR","DESeq2")
+package_needed <- c("tidyverse", "factoextra", "ggpubr","edgeR","DESeq2","ggplot2","ComplexHeatmap","ggrepel")
 install.packages(package_needed)
 for (pkg in package_needed) {
   if(!require(pkg, character.only = T)) library(pkg, character.only = T)
@@ -67,7 +69,7 @@ long_transormation <- function(x,value){    #used this code alot so decided to m
 
 long_transormation(lcpm,"LogCPM") %>% ggplot()+geom_boxplot(aes(x = Patients, y = LogCPM, fill = Patients))#Variance!
 
-index.filter<-filterByExpr(dgelist, group=tissue, min.count = 15, min.total.count = 20, min.prop = 0.7, design_matrix)#Modifed parameters to remove lowely expressed genes
+index.filter<-filterByExpr(dgelist, group=tissue, min.count = 15, min.total.count = 20, min.prop = 0.7)#Modifed parameters to remove lowely expressed genes
 
 dgelist.filtered<-dgelist[index.filter, , keep.lib.sizes=FALSE]
 dgelist.filtered$samples$lib.size <- colSums(dgelist.filtered$counts)
@@ -85,8 +87,6 @@ long_transormation(lcpm.filtered, "LogCPM") %>% ggplot() + geom_density(aes(LogC
 
 plotMeanVar(dgelist.filtered)#views the mean varaince at the gene-level 
 
-plotMeanVar(dgelist.filtered.norm)
-
 
 #~~~~~~~~~~~~~~~~~~~~~~~Normalisation~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # Normalisation 
@@ -98,6 +98,8 @@ dgelist.filtered.norm$samples$lib.size <- (dgelist.filtered.norm$samples$lib.siz
 
 #Gene Names are removed from column after normalisation!
 row.names(dgelist.filtered.norm$counts) <- dgelist.filtered.norm$genes[,1]
+
+plotMeanVar(dgelist.filtered.norm)
 #check TMM effects on lib sizes 
 unnorm_lib <- data.frame(
   Sample = colnames(dgelist.filtered),
@@ -117,7 +119,7 @@ ggplot(unnorm_lib, aes(x = Sample, y = LibSize, color = tissue)) +
   labs(title = "Barplot of Un-normalised Library Sizes",
        x = "Sample",
        y = "Library Size") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   
   
   ggplot(norm_lib, aes(x = Sample, y = LibSize, color = tissue)) +
@@ -148,7 +150,7 @@ long.lcpm.filtered %>% left_join(sample.meta.data, by=c("Patients"="sample.names
   ggplot()+geom_density(aes(LogCPM, colour=Patients))+
   ggtitle("LogCPM density across all patient samples before TMM normalisation")+
   theme_pubr()+
-  theme(plot.title = element_text(hjust = 0.5))+
+  theme(plot.title = element_text(hjust = 0.5))
 
 ggplot(df.plotting) + geom_density(aes(LogCPM, colour=Patients))+
   ggtitle("LogCPM density across all patient samples after TMM normalisation")+
@@ -160,7 +162,8 @@ long.lcpm.filtered %>% left_join(sample.meta.data, by=c("Patients"="sample.names
   ggtitle("Varaince before TMM normalisation")+
   theme_pubr()+
   theme(plot.title = element_text(hjust = 0.5))+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
 ggplot(df.plotting)+geom_boxplot(aes(x=Patients, y = LogCPM, color = tissue))+
   ggtitle("Varaince after TMM normalisation")+
   theme_pubr()+
@@ -229,7 +232,6 @@ as.data.frame(svd_PCA$rotation[,1:2]) %>% #Top +ve contributing genes to PC2
 as.data.frame(svd_PCA$rotation["VEGFA",])#Loading for VEGFA
 
 #4. Identification of DEGs between the groups
-library("ComplexHeatmap")
 
 Patients_fac<-factor(sample.meta.data$patient) # Generates a factor object for patient
 tissue<-factor(sample.meta.data$tissue) # Generates a factor object for tissue type(this is what i use for DGE analysis)
@@ -254,7 +256,6 @@ stat_test <- glmQLFTest(linear_model, coef = 2) # This function is used to perfo
 
 
 DE<-topTags(stat_test, n=Inf, sort.by = "logFC", adjust.method = "fdr")# A function from the limmia package and is used to test edgeR functions glmLRT, glmTreat, glmQLFTest
-library(ggrepel)
 
 ggplot() + #volcano plot showing DE gene before FDR and P-value filtering, shows the top 10 +ve and -ve DE genes 
   geom_point(data=filter(DE$table, FDR<0.05), aes(x=logFC, y=-log10(PValue)), colour = "black") +
@@ -285,14 +286,13 @@ filtered_DEList <- DE$table[DE$table$PValue < 0.05,]
 filtered_DEList <- filtered_DEList[DE$table$FDR < 0.05,]
 
 edgeR_top <- slice_head(filtered_DEList[order(filtered_DEList$logFC, decreasing = TRUE),], n = 20)
-view(slice_head(filtered_DEList[order(filtered_DEList$logFC, decreasing = TRUE),], n = 50)$Gene)
-view(slice_head(filtered_DEList[order(filtered_DEList$logFC, decreasing = FALSE),], n = 50)$Gene)
+slice_head(filtered_DEList[order(filtered_DEList$logFC, decreasing = TRUE),], n = 50)$Gene
+slice_head(filtered_DEList[order(filtered_DEList$logFC, decreasing = FALSE),], n = 50)$Gene
 edgeR_top[order(edgeR_top$PValue, decreasing = FALSE),]
 #----------------------------------------------------------------------------------------------------------------
 
 #COMPARE EdgeR with DESeq2!
   
-library("DESeq2")
 
 filtered_data[index.filter,]
 
@@ -313,7 +313,7 @@ filtered_DESeq2 <- head(filtered_DESeq2[order(filtered_DESeq2$log2FoldChange, de
 
 top_DESeq2 <- filtered_DESeq2[order(filtered_DESeq2$pvalue, decreasing = FALSE),]
 
-view(cbind(edgeR_top$Gene, row.names(top_DESeq2)))
+cbind(edgeR_top$Gene, row.names(top_DESeq2))
 
 #5. A heatmap of top 15 DEGs in each group
 
